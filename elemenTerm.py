@@ -100,13 +100,13 @@ def main():
         event, values = window.read( timeout=1000)
 
            
-        if "Up" in event:            # up button pressed, pull previous command
+        if "Up" in event and len(commandList) > 0:            # up button pressed, pull previous command
             window['-INPUT-'].update(commandList[-previousCommand])
             previousCommand = previousCommand + 1
             if previousCommand > len(commandList):
                 previousCommand = 1
 
-        if "Down" in event:            # down button pressed, pull previous command
+        if "Down" in event and len(commandList) > 0:            # down button pressed, pull previous command
             window['-INPUT-'].update(commandList[-previousCommand])
             previousCommand = previousCommand - 1
             if previousCommand < 1:
