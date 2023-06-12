@@ -77,7 +77,7 @@ def main():
         portList.append('None')
   
     layout = [
-        [sg.Text('Serial Port:'), sg.Combo((portList), enable_events=True ,key='-PORT-', size=(20, 1), default_value=portList[0]), sg.Button('Connect', key='-CONNECT-', bind_return_key=True, focus=True), sg.Combo(['300','600','750','1200','2400','4800','9600','19200','31250','38400','57600','74880','115200','230400','250000','460800','500000','921600','1000000','2000000'], default_value='9600', key='-SPEED-', enable_events=True,size=10), sg.Combo(['No Line Ending', 'Newline', 'Carriage Return', 'Both NL & CR'], key='-LINE END-', default_value='Both NL & CR', enable_events=True),sg.Checkbox('Local Echo', enable_events=True), sg.Checkbox('Autoscroll', key='-AUTOSCROLL-', default=True, enable_events=True), sg.Checkbox('Line Mode', key='-LINEMODE-', enable_events=True), sg.Button('Clear Data')],
+        [sg.Text('Serial Port:'), sg.Combo((portList), enable_events=True ,key='-PORT-', size=(20, 1), default_value=portList[0]), sg.Button('Connect', key='-CONNECT-', bind_return_key=True, focus=True), sg.Combo(['300','600','750','1200','2400','4800','9600','19200','31250','38400','57600','74880','115200','230400','250000','460800','500000','921600','1000000','2000000'], default_value='9600', key='-SPEED-', enable_events=True,size=10), sg.Combo(['No Line Ending', 'Newline', 'Carriage Return', 'Both NL & CR'], key='-LINE END-', default_value='Both NL & CR', enable_events=True),sg.Checkbox('Local Echo', key='-LOCALECHO-', default=True, enable_events=True), sg.Checkbox('Autoscroll', key='-AUTOSCROLL-', default=True, enable_events=True), sg.Checkbox('Line Mode', key='-LINEMODE-', default=True, enable_events=True), sg.Button('Clear Data')],
         [sg.Multiline(key='-OUTPUT-', size=(100, 20), horizontal_scroll=True, enable_events=True)],
         [sg.Input(key='-INPUT-', size=(95, 1)), sg.Button('Send')],
     ]
@@ -91,26 +91,22 @@ def main():
     serial_port = None
     output_queue = queue.Queue()
 
+#must unbind control, alt, shift, caps lock kets from the text area: 
+# ref: https://stackoverflow.com/a/76453409/1053106
+    window['-OUTPUT-'].bind("<Key>", "")
+
 
     window['-CONNECT-'].SetFocus()
     
-    previousCommand = 1;
+    previousCommand = 1
 
     while True:
         event, values = window.read( timeout=1000)
 
+        # # for debugging
+        # if "TIMEOUT" not in event:
+        #     sg.popup(event)
            
-        if "Up" in event and len(commandList) > 0:            # up button pressed, pull previous command
-            window['-INPUT-'].update(commandList[-previousCommand])
-            previousCommand = previousCommand + 1
-            if previousCommand > len(commandList):
-                previousCommand = 1
-
-        if "Down" in event and len(commandList) > 0:            # down button pressed, pull previous command
-            window['-INPUT-'].update(commandList[-previousCommand])
-            previousCommand = previousCommand - 1
-            if previousCommand < 1:
-                previousCommand = len(commandList)
 
         # Check to see if we are conencted to a serial port and if not, 
         # update the list of serial ports in case new ones have been plugged in or out.
@@ -133,7 +129,17 @@ def main():
             
             window.Element('-PORT-').Update(values=portList2, value=portList2[0])  #update the value of the dropdown witht he new info
 
+        if "Up:38" in event and len(commandList) > 0:            # up button pressed, pull previous command
+            window['-INPUT-'].update(commandList[-previousCommand])
+            previousCommand = previousCommand + 1
+            if previousCommand > len(commandList):
+                previousCommand = 1
 
+        if "Down:40" in event and len(commandList) > 0:            # down button pressed, pull previous command
+            window['-INPUT-'].update(commandList[-previousCommand])
+            previousCommand = previousCommand - 1
+            if previousCommand < 1:
+                previousCommand = len(commandList)
 
         if event == sg.WINDOW_CLOSED:
             break
@@ -144,19 +150,18 @@ def main():
             window['-CONNECT-'].BindReturnKey = True
 
         if serial_port and event == '-LINEMODE-':
-            if values['-LINEMODE-']:
+            if not values['-LINEMODE-']:
                 window['-OUTPUT-'].SetFocus()
             else:
                 window['-INPUT-'].SetFocus()
 
-        if event == '-CONNECT-':
-            
+        if event == '-CONNECT-'and values['-PORT-'] != 'None':
             # Search through all entries in portList for the one with the displayed comport NameError
             for portVal in portList:
                 port = values['-PORT-'].split(') ')[1]#.split(')')[0]
                 # print('PORT = '+port)
 
-            
+
             if serial_port is None:
                 try:
                     serial_port = serial.Serial(port, values['-SPEED-'], timeout=0.1)
@@ -211,30 +216,42 @@ def main():
             window['-INPUT-'].update("")
 
         if event == '-LINEMODE-':
-            window['-INPUT-'].Update(visible=not(values['-LINEMODE-']))  
-            window['Send'].Update(visible=not(values['-LINEMODE-']))
+            window['-INPUT-'].Update(visible=(values['-LINEMODE-']))  
+            window['Send'].Update(visible=(values['-LINEMODE-']))
             # window.Element('-INPUT-').Update(visible=False)
 
-        if event == '-OUTPUT-' and values['-LINEMODE-'] :
-            lineEnd =''
-            if 'C' in values['-LINE END-'] or 'Both' in values['-LINE END-']:
-                lineEnd+=chr(13)
-            if 'New' in values['-LINE END-'] or 'Both' in values['-LINE END-']:
-                lineEnd+=chr(10)
-                
-            input_text = values['-OUTPUT-']
-            last_letter = input_text[-1]  # get the last letter (the one user just typed)
-            # print(f"User entered: {last_letter}")
+#  DOES NOT WORK correctly when selecting "no line ending" or anything after you've set that.
+#  Definitely doesn't work with local echo...
+        if event == '-OUTPUT-' and not values['-LINEMODE-'] and serial_port :
+            # If the keypressed is not a special key like ALT, CTRL, Shift, or Caplock, etc. (see ref note above while true)
+            e = window['-OUTPUT-'].user_bind_event
+            if e.char:
+                # set up line ending to be added to any text
+                lineEnd =''
+                if 'C' in values['-LINE END-'] or 'Both' in values['-LINE END-']:
+                    lineEnd+=chr(13)
+                if 'New' in values['-LINE END-'] or 'Both' in values['-LINE END-']:
+                    lineEnd+=chr(10)
+                    
 
-            data = last_letter+lineEnd #attach line ending
-            sg.cprint(f'sending {data}', colors='black on light blue') #debug
-            serial_port.write(data.encode())
-            # window['-INPUT-'].update("")
-            # sg.cprint(values['-LINEMODE-'], colors='white on green')            
-            ## Get the text from the multiline input field
-            # input_text = values['-OUTPUT-']
-            # last_letter = input_text[-1]        # Do something with the input text
-            # print(f"User entered: {last_letter}")
+                # get the last value typed, wherever it is, its position, then delete it, because user can click and add characters anywhere int he text area for some reason... If needed, we can reprint this character later
+                # 'end', 'insert-1c', etc are tkinter 'indicies' tags referring to the current cursor position insert-1c = (insert) -1 character
+                last_character_position = window['-OUTPUT-'].Widget.index('insert-1c') 
+                last_character = window['-OUTPUT-'].Widget.get(last_character_position, window['-OUTPUT-'].Widget.index('insert'))
+                window['-OUTPUT-'].Widget.delete(last_character_position)
+
+
+                #always set the cursor position to the very end of all the text
+                window['-OUTPUT-'].Widget.insert('end','') 
+                window['-OUTPUT-'].Widget.mark_set('insert','end') 
+
+                if values['-LOCALECHO-']:
+                    window['-OUTPUT-'].Widget.insert('end',last_character) #print the users character at the end if local echo is set
+
+                data = last_character+lineEnd #attach line ending
+                sg.cprint(f'sending {data}', colors='black on light blue') #debug
+                serial_port.write(data.encode())
+
         
         if event == 'Clear Data':
                 window['-OUTPUT-'].update("")
