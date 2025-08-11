@@ -1,5 +1,5 @@
 
-############  DIY python hex editor in tkinter from 
+############  DIY python hex editor example in tkinter from 
 ########## http://www.qtrac.eu/pyhexviewer.html
 
 #!/usr/bin/env python3
