@@ -64,13 +64,13 @@ def main():
         # print("interface = ", specific_port.interface)
 
         if("Bluetooth" in specific_port.description or "bluetooth" in specific_port.description):
-            portList.append(specific_port.name+" "+"(Bluetooth)")
+            portList.append(specific_port.device+" "+"(Bluetooth)")
         elif("USB" in specific_port.description or "FTDI" in specific_port.manufacturer):
-            portList.append("(USB) "+specific_port.name)
+            portList.append("(USB) "+specific_port.device)
         elif("Arduino" in specific_port.description):
             portList.append(specific_port.description)
         else:
-            portList.append(specific_port.name)     
+            portList.append(specific_port.device)     
         portList.sort()
 
     if not portList:
@@ -115,13 +115,13 @@ def main():
             ser = serial.tools.list_ports.comports() #serial.Serial('COM6')  # open serial port
             for specific_port in ser:
                 if("Bluetooth" in specific_port.description or "bluetooth" in specific_port.description):
-                    portList2.append(specific_port.name+" "+"(Bluetooth)")
+                    portList2.append(specific_port.device+" "+"(Bluetooth)")
                 elif("USB" in specific_port.description or "FTDI" in specific_port.manufacturer):
-                    portList2.append("(USB) "+specific_port.name)
+                    portList2.append("(USB) "+specific_port.device)
                 elif("Arduino" in specific_port.description):
                     portList2.append(specific_port.description)
                 else:
-                    portList2.append(specific_port.name)     
+                    portList2.append(specific_port.device)     
                 portList2.sort()
 
             if not portList2:
